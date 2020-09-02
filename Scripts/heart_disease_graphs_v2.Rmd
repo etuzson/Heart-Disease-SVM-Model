@@ -1,0 +1,1485 @@
+---
+title: "Heart Disease Graphs"
+output:
+  html_document:
+    df_print: paged
+---
+```{r libraries, include=FALSE}
+library(readr)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r constants}
+# Constants
+
+# Horizontal text justification variables to make code easier to read
+LEFT <- 0
+CENTER <- 0.5
+RIGHT <- 1
+```
+
+```{r import data}
+# Import dataset
+
+# Categorical variables are numbers so need to specify to import them as factors instead of numerical
+heart_data <- read_csv("../Data/heart.csv", col_types = cols(
+                                                              sex = col_factor(),
+                                                              cp = col_factor(),
+                                                              fbs = col_factor(),
+                                                              restecg = col_factor(),
+                                                              exang = col_factor(),
+                                                              slope = col_factor(),
+                                                              ca = col_factor(),
+                                                              thal = col_factor(),
+                                                              target = col_factor()
+                                                            ))
+head(heart_data)
+
+# INDEPENDENT VARIABLES
+# age: in years
+# sex: 1 = male, 0 = female
+# cp: chest pain type, 0 = asymptomatic, 1 = atypical angina, 2 = non-anginal pain, 3 = typical angina
+# trestbps: resting blood pressure on admission to hospital (mm Hg)
+# chol: serum cholesterol (mg/dl)
+# fbs: fasting blood sugar > 120 mg/dl, 1 = TRUE, 0 = FALSE
+# restecg: resting electrocardiographic results, 0 = showing probable or definite left ventricular hypertrophy by Estes'              criteria, 1 = normal, 2 = having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of >            0.05 mV)
+# thalach: maximum heart rate achieved
+# exang: exercise induced angina, 1 = yes, 0 = no
+# oldpeak: ST depression induced by exercise relative to rest
+# slope: the slope of the peak exercise ST segment, 0 = downsloping, 1 = flat, 2 = upsloping
+# ca: number of major vessels (0-3) colored by flourosopy
+# thal: 1 = normal, 2 = fixed defect, 3 = reversible defect
+
+# DEPENDENT VARIABLE
+# target: 1 = heart disease, 0 = no heart disease
+```
+
+
+This graph shows the proportion of people who have and do not have heart disease in the data set. There is roughly an even split between the two categories, with slighyly more people with heart disease. It is good that there is roughly an equal proportion becaouse it mitigates some bias which could be introduced to a model.
+```{r}
+ggplot(data = heart_data) +
+  geom_bar(mapping = aes(x = target))
+```
+
+
+
+GRAPHS OF EACH VARIABLE VS. HEART DISEASE
+
+-------AGE-------
+
+```{r age variables}
+# Create variables and modify them here
+
+age_bracket_width <- 10
+
+# Graph variables
+variable_being_graphed <- "Age" # Used to create titles
+x_label <- "Age Bracket"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+
+The following graph shows the distribution of age in the dataset. Most people fall in the 45-65 years old range.
+```{r g1 - age frequency}
+# Graph of age distribution
+
+(g1 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(age, width = age_bracket_width)
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  )
+)
+```
+```{r g1 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g1$labels$title, ".png", sep = ""), plot = g1)
+```
+
+This graph shows the proportion of people in each age group who have heart disease. Interestingly, the younger age groups have a higher proportion of heart disease than the older age group, counter to what one would believe. This is probably simply by chance as the younger age groups have fewer data points therefore each person with heart disease contributes sigingicantly more to the overall proportion of people with heart disease.
+```{r g2 - age proportion}
+# Graph of proportion of people with heart disease in each age bracket
+
+# Create a table showing the proportion of people with heart disease in each age bracket
+heart_disease_by_age <- heart_data %>% 
+                        group_by(cut_width(age, width = age_bracket_width)) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n()) %>% 
+                        rename("age_bracket" = 1) # Renames 1st column because cut_width() gave it a messy name
+                        
+(g2 <- ggplot(data = heart_disease_by_age) +
+  geom_col(
+    mapping = aes(
+      x = age_bracket,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  )
+)
+```
+```{r g2 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g2$labels$title, ".png", sep = ""), plot = g2)
+```
+
+This next graph take displays the information presented in the previous two graphs. For our exploratory data analysis we followed this pattern of graphing the frequency distribution, the proportion distribution, and finally both overlaid on top of each other for each of the independent variables.
+```{r g3 - age freq and prop}
+# Overlay proportion of people with heart disease onto total number of people in each age bracket
+
+(g3 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(age, width = age_bracket_width),
+      fill = target
+      ), position = "stack"
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  )
+)
+```
+```{r g3 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g3$labels$title, ".png", sep = ""), plot = g3)
+```
+
+
+
+
+
+-------SEX-------
+
+```{r sex variables}
+# Create variables and modify them here
+
+# Graph variables
+variable_being_graphed <- "Sex" # Used to create titles
+x_label <- "Sex"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+This graphs shows the number of males and females. The dataset is heavily skewed towards males.
+```{r g4 - sex frequency}
+# Number of males and females
+
+(g4 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = sex
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) +
+  scale_x_discrete(
+    labels = c("1" = "Male", "0" = "Female")
+  )
+)
+```
+```{r g4 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g4$labels$title, ".png", sep = ""), plot = g4)
+```
+
+Here we can see that females have a much greater proportion of heart disease than males in the data set.
+```{r g5 - sex proportion}
+# Proportion of males and females with heart disease
+
+# Create a table showing the proportion of people with heart disease for each sex
+heart_disease_by_sex <- heart_data %>% 
+                        group_by(sex) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n())
+                        
+(g5 <- ggplot(data = heart_disease_by_sex) +
+  geom_col(
+    mapping = aes(
+      x = sex,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) +
+  scale_x_discrete(
+    labels = c("1" = "Male", "0" = "Female")
+  )
+)
+```
+```{r g5 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g5$labels$title, ".png", sep = ""), plot = g5)
+```
+
+```{r g6 - sex freq and prop}
+# Overlay of the last two graphs
+
+(g6 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = sex,
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  ) +
+  scale_x_discrete(
+    labels = c("1" = "Male", "0" = "Female")
+  )
+)
+```
+```{r g6 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g6$labels$title, ".png", sep = ""), plot = g6)
+```
+
+
+
+
+
+-------CP-------
+```{r cp variables}
+# Create variables and modify them here
+
+# Graph variables
+variable_being_graphed <- "Chest Pain" # Used to create titles
+x_label <- "Chest Pain Type"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+Here we can see that the vast majority of people do not experience chest pain as is expected. Non-anginal pain was the most common type of chest pain followed by atypical angina.
+```{r g7 - cp frequency}
+# Frequency of chest pain types
+
+(g7 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cp
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) +
+  scale_x_discrete(
+    labels = c("Asymptomatic", "Atypical Angina", "Non-Anginal Pain", "Typical Angina")
+  )
+)
+```
+```{r g7 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g7$labels$title, ".png", sep = ""), plot = g7)
+```
+
+People with atypical angina have the largest proportion of people with heart disease. This graph also shows that people with any kind of chest pain are more likely to have heart disease than people without any chest pain.
+```{r g8 - cp proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_cp <- heart_data %>% 
+                        group_by(cp) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n())
+                        
+(g8 <- ggplot(data = heart_disease_by_cp) +
+  geom_col(
+    mapping = aes(
+      x = cp,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) +
+  scale_x_discrete(
+    labels = c("Asymptomatic", "Atypical Angina", "Non-Anginal Pain", "Typical Angina")
+  )
+)
+```
+```{r g8 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g8$labels$title, ".png", sep = ""), plot = g8)
+```
+
+```{r g9 - cp freq and prop}
+# Overlay of the last two graphs
+
+(g9 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cp,
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  ) +
+  scale_x_discrete(
+    labels = c("Asymptomatic", "Atypical Angina", "Non-Anginal Pain", "Typical Angina")
+  )
+)
+```
+```{r g9 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g9$labels$title, ".png", sep = ""), plot = g9)
+```
+
+
+
+
+
+-------TRESTBPS-------
+
+```{r trestbps variables}
+# Create and modify variables here
+
+# Width of resting blood pressure brackets
+rest_bps_bracket_width <- 10
+
+# Graph variables
+variable_being_graphed <- "Resting Blood Pressure" # Used to create titles
+x_label <- "Blood Pressure on Admission to Hospital (mm Hg)"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+Resting blood pressure is shown here. Most people have a resting blood pressure in the range of 115 - 145 mm Hg.
+```{r g10 - trestbps frequency}
+# Frequency
+
+(g10 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(trestbps, width = rest_bps_bracket_width)
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  )
+)
+```
+```{r g10 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g10$labels$title, ".png", sep = ""), plot = g10)
+```
+
+People with lower blood pressure are at greater risk of heart disease according to this graph. Although, this could possibly be by chance since there are relatively few people with blood pressure on the lower end. Every other range of blood pressures are relatively the same when it comes to how many people have heart disease. It could be that blood pressure is not a good indicator of heart disease.
+```{r g11 - trestbps proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_trestbps <- heart_data %>% 
+                        group_by(cut_width(trestbps, width = rest_bps_bracket_width)) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n()) %>% 
+                        rename("trestbps_bracket" = 1) # Renames 1st column because cut_width() gave it a messy name
+                        
+(g11 <- ggplot(data = heart_disease_by_trestbps) +
+  geom_col(
+    mapping = aes(
+      x = trestbps_bracket,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  )
+)
+```
+```{r g11 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g11$labels$title, ".png", sep = ""), plot = g11)
+```
+
+```{r g12 - trestbps freq and prop}
+# Overlay of the last two graphs
+
+(g12 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(trestbps, width = rest_bps_bracket_width),
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  )
+)
+```
+```{r g12 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g12$labels$title, ".png", sep = ""), plot = g12)
+```
+
+
+
+
+
+-------CHOL-------
+
+```{r chol variables}
+# Create and modify variables here
+
+# Cholesterol level bracket width
+chol_bracket_width <- 20
+
+# Graph variables
+variable_being_graphed <- "Serum Cholesterol" # Used to create titles
+x_label <- "Serum Cholesterol (mg/dl)"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+Most people in the dataset seem to have cholesterol levels in the range of 190 - 270 mg/dl.
+```{r g13 - chol frequency}
+# Frequency
+
+(g13 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(chol, width = chol_bracket_width)
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  )
+)
+```
+```{r g13 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g13$labels$title, ".png", sep = ""), plot = g13)
+```
+
+This graphs shows that people on the extreme ends have higher proportions of heart disease. It again could simply be due to a lack of data points on the extreme ends as everything else in between is fairly level at around 50% proportion. This suggests that cholesterol levels may not be a good predictor of heart disease.
+```{r g14 - chol proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_chol <- heart_data %>% 
+                        group_by(cut_width(chol, width = chol_bracket_width)) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n()) %>% 
+                        rename("chol_bracket" = 1) # Renames 1st column because cut_width() gave it a messy name
+                        
+(g14 <- ggplot(data = heart_disease_by_chol) +
+  geom_col(
+    mapping = aes(
+      x = chol_bracket,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  )
+)
+```
+```{r g14 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g14$labels$title, ".png", sep = ""), plot = g14)
+```
+
+```{r g15 - chol freq and prop}
+# Overlay of the last two graphs
+
+(g15 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(chol, width = chol_bracket_width),
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  )
+)
+```
+```{r g15 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g15$labels$title, ".png", sep = ""), plot = g15)
+```
+
+
+
+
+
+-------FBS-------
+```{r fbs variables}
+# Create and modify variables here
+
+# Graph variables
+variable_being_graphed <- "Fasting Blood Sugar" # Used to create titles
+x_label <- "Fasting Blood Sugar (mg/dl)"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+Most people have fasting blood sugar levels greater than 120 mg/dl.
+```{r g16 - fbs frequency}
+# Frequency
+
+(g16 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = fbs
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) +
+  scale_x_discrete(
+    labels = c(">120", "<=120")
+  )
+)
+```
+```{r g16 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g16$labels$title, ".png", sep = ""), plot = g16)
+```
+
+The proportions of people with heart disease are roughly even between the two categories. Maybe this variable is not a good predictor of heart disease.
+```{r g17 - fbs proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_fbs <- heart_data %>% 
+                        group_by(fbs) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n())
+                        
+(g17 <- ggplot(data = heart_disease_by_fbs) +
+  geom_col(
+    mapping = aes(
+      x = fbs,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) +
+  scale_x_discrete(
+    labels = c(">120", "<=120")
+  )
+)
+```
+```{r g17 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g17$labels$title, ".png", sep = ""), plot = g17)
+```
+
+```{r g18 - fbs freq and prop}
+# Overlay of the last two graphs
+
+(g18 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = fbs,
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  ) +
+  scale_x_discrete(
+    labels = c(">120", "<=120")
+  )
+)
+```
+```{r g18 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g18$labels$title, ".png", sep = ""), plot = g18)
+```
+
+
+
+
+
+-------RESTECG-------
+```{r restecg variables}
+# Create and modify variables here
+
+# Graph variables
+variable_being_graphed <- "Resting ECG" # Used to create titles
+x_label <- "ECG Result"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+Most people in the dataset have left ventricular hypertrophy, and very few people have an ST-T wave abnormality. Eveyrone else is normal.
+```{r g19 - restecg frequency}
+# Frequency
+
+(g19 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = restecg
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) +
+  scale_x_discrete(
+    labels = c("Probable Left Ventricular Hypertrophy", "Normal", "ST-T Wave Abnormality")
+  )
+)
+```
+```{r g19 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g19$labels$title, ".png", sep = ""), plot = g19)
+```
+
+People with left ventricular hypertrophy are at higher risk of heart disease. People with ST=T wave abnormality have a low proportion with heart disease but this could be due to the lack of data points. 
+According to https://www.mayoclinic.org/diseases-conditions/left-ventricular-hypertrophy/symptoms-causes/syc-20374314, left ventricular hypertrophy occurs when there is something causing the heart to work harder, it also states that it leads to an increased chance of heart disease which is consistent with the data here.
+```{r g20 - restecg proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_restecg <- heart_data %>% 
+                        group_by(restecg) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n())
+                        
+(g20 <- ggplot(data = heart_disease_by_restecg) +
+  geom_col(
+    mapping = aes(
+      x = restecg,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) +
+  scale_x_discrete(
+    labels = c("Probable Left Ventricular Hypertrophy", "Normal", "ST-T Wave Abnormality")
+  )
+)
+```
+```{r g20 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g20$labels$title, ".png", sep = ""), plot = g20)
+```
+
+```{r g21 - restecg freq and prop}
+# Overlay of the last two graphs
+
+(g21 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = restecg,
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  ) +
+  scale_x_discrete(
+    labels = c("Probable Left Ventricular Hypertrophy", "Normal", "ST-T Wave Abnormality")
+  )
+)
+```
+```{r g21 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g21$labels$title, ".png", sep = ""), plot = g21)
+```
+
+
+
+
+
+-------THALACH-------
+
+```{r thalach variables}
+# Create and modify variables here
+
+# Bracket size
+thalach_bracket_width <- 10
+
+# Graph variables
+variable_being_graphed <- "Max Heart Rate" # Used to create titles
+x_label <- "Heart Rate (bpm)"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+This variable shows the maximum heart rate people achieved. Most people are in the range of 145 - 175 with very few beyond that.
+```{r g22 - thalach frequency}
+# Frequency
+
+(g22 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(thalach, width = thalach_bracket_width)
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  )
+)
+```
+```{r g22 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g22$labels$title, ".png", sep = ""), plot = g22)
+```
+
+The proportion of people with heart disease steadily increases with max heart rate. This suggests that higher heart rate is correlated with a higher risk of heart disease.
+```{r g23 - thalach proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_thalach <- heart_data %>% 
+                        group_by(cut_width(thalach, width = thalach_bracket_width)) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n()) %>% 
+                        rename("thalach_bracket" = 1)
+                        
+(g23 <- ggplot(data = heart_disease_by_thalach) +
+  geom_col(
+    mapping = aes(
+      x = thalach_bracket,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) 
+)
+```
+```{r g23 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g23$labels$title, ".png", sep = ""), plot = g23)
+```
+
+```{r g24 - thalach freq and prop}
+# Overlay of the last two graphs
+
+(g24 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(thalach, width = thalach_bracket_width),
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  )
+)
+```
+```{r g24 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g24$labels$title, ".png", sep = ""), plot = g24)
+```
+
+
+
+
+
+-------EXANG-------
+
+```{r exang variables}
+# Create and modify variables here
+
+# Graph variables
+variable_being_graphed <- "Exercise Induced Angina" # Used to create titles
+x_label <- "Exercise Induced Angina"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+Most people do not have exercise induced angina.
+```{r g25 - exang frequency}
+# Frequency
+
+(g25 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = exang
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) +
+  scale_x_discrete(
+    labels = c("No", "Yes")
+  )
+)
+```
+```{r g25 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g25$labels$title, ".png", sep = ""), plot = g25)
+```
+
+Those who do not have exercise induced angina have a higher proportion of people with heart disease. This suggests that this variable may not have a significant effect on whether people have heart disease or not.
+```{r g26 - exang proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_thalach <- heart_data %>% 
+                        group_by(exang) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n())
+                        
+(g26 <- ggplot(data = heart_disease_by_thalach) +
+  geom_col(
+    mapping = aes(
+      x = exang,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) +
+  scale_x_discrete(
+    labels = c("No", "Yes")
+  )
+)
+```
+```{r g26 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g26$labels$title, ".png", sep = ""), plot = g26)
+```
+
+```{r g27 - exang freq and prop}
+# Overlay of the last two graphs
+
+(g27 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = exang,
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  ) +
+  scale_x_discrete(
+    labels = c("No", "Yes")
+  )
+)
+```
+```{r g27 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g27$labels$title, ".png", sep = ""), plot = g27)
+```
+
+
+
+
+
+
+-------OLDPEAK-------
+
+```{r oldpeak variables}
+# Create and modify variables here
+
+# Bracket Size
+oldpeak_bracket_width <- 0.4
+
+# Graph variables
+variable_being_graphed <- "ST Depression" # Used to create titles
+x_label <- "ST Depression Induced By Exercise Relative to Rest"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+This graph shows the ST depression induced by exercise relative to rest. Most people have a value of around 0 here meaning there is no ST depression caused. According to https://en.wikipedia.org/wiki/ST_depression, this is normal and any kind of ST depression beyond 0 may be indicative of heart disease.
+```{r g28 - oldpeak frequency}
+# Frequency
+
+(g28 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(oldpeak, oldpeak_bracket_width)
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  )
+)
+```
+```{r g28 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g28$labels$title, ".png", sep = ""), plot = g28)
+```
+
+This shows that people with an ST depression do have a higher chance of heart disease. The large proportion for people without an ST depression is probably due to the many other factors that can cause heart disease. Heart disease is a very general term for many kinds of heart problems.
+```{r g29 - oldpeak proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_oldpeak <- heart_data %>% 
+                        group_by(cut_width(oldpeak, width = oldpeak_bracket_width)) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n()) %>% 
+                        rename("oldpeak_bracket" = 1)
+                        
+(g29 <- ggplot(data = heart_disease_by_oldpeak) +
+  geom_col(
+    mapping = aes(
+      x = oldpeak_bracket,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  )
+)
+```
+```{r g29 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g29$labels$title, ".png", sep = ""), plot = g29)
+```
+
+```{r g30 - oldpeak freq and prop}
+# Overlay of the last two graphs
+
+(g30 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = cut_width(oldpeak, oldpeak_bracket_width),
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+    axis.text.x.bottom = element_text(angle = 90)
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  )
+)
+```
+```{r g30 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g30$labels$title, ".png", sep = ""), plot = g30)
+```
+
+
+
+
+
+
+------SLOPE-------
+
+```{r slope variables}
+# Create and modify variables here
+
+# Graph variables
+variable_being_graphed <- "Slope of Peak Exercise ST Segment" # Used to create titles
+x_label <- "Slope of Peak Exercise ST Segment"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+Most people appear to have upsloping and downsloping ST segements. Makes sense as there is a wide range of slope values covering upsloping and downsloping and only one slope value for being flat.
+```{r g31 - slope frequency}
+# Frequency
+
+(g31 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = slope
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) +
+  scale_x_discrete(
+    labels = c("Downsloping", "Flat", "Upsloping")
+  )
+)
+```
+```{r g31 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g31$labels$title, ".png", sep = ""), plot = g31)
+```
+
+People with downsloping ST segments are at higher risk of heart disease. As the slope decreases the proportion probably increases which is why people with upsloping segments have a lowest proportion and people with flat slopes have an intermediate proportion.
+```{r g32 - slope proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_slope <- heart_data %>% 
+                        group_by(slope) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n())
+                        
+(g32 <- ggplot(data = heart_disease_by_slope) +
+  geom_col(
+    mapping = aes(
+      x = slope,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) +
+  scale_x_discrete(
+    labels = c("Downsloping", "Flat", "Upsloping")
+  )
+)
+```
+```{r g32 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g32$labels$title, ".png", sep = ""), plot = g32)
+```
+
+```{r g33 - slope freq and prop}
+# Overlay of the last two graphs
+
+(g33 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = slope,
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  ) +
+  scale_x_discrete(
+    labels = c("Downsloping", "Flat", "Upsloping")
+  )
+)
+```
+```{r g33 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g33$labels$title, ".png", sep = ""), plot = g33)
+```
+
+
+
+
+
+
+------CA-------
+
+```{r ca variables}
+# Create and modify variables here
+
+# Graph variables
+variable_being_graphed <- "Number of Major Vessels Coloured By Flourosopy" # Used to create titles
+x_label <- "Number of Major Vessels Coloured By Flourosopy"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+According to https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468223/, the number of vessels coloured by fluoroscopy can be a non-invasive way of diagnosing heart disease. Here we see that most people in the data set had 0 major vessels coloured and as the number of people declines for increasing numbers of vessels coloured.
+```{r g34 - ca frequency}
+# Frequency
+
+(g34 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = ca
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) +
+  scale_x_discrete(
+    limits = c("0", "1", "2", "3", "4")
+  )
+)
+```
+```{r g34 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g34$labels$title, ".png", sep = ""), plot = g34)
+```
+
+The highest proportion of people with heart disease had 4 vessels coloured by fluoroscopy. Interestingly, the second highest was 0 and those in between actually had decreasing proportions. The spike in 4 vessels could be caused by the lack of data points for that value.
+```{r g35 - ca proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_ca <- heart_data %>% 
+                        group_by(ca) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n())
+                        
+(g35 <- ggplot(data = heart_disease_by_ca) +
+  geom_col(
+    mapping = aes(
+      x = ca,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) +
+  scale_x_discrete(
+    limits = c("0", "1", "2", "3", "4")
+  )
+)
+```
+```{r g35 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g35$labels$title, ".png", sep = ""), plot = g35)
+```
+
+```{r g36 - ca freq and prop}
+# Overlay of the last two graphs
+
+(g36 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = ca,
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  ) +
+  scale_x_discrete(
+    limits = c("0", "1", "2", "3", "4")
+  )
+)
+```
+```{r g36 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g36$labels$title, ".png", sep = ""), plot = g36)
+```
+
+
+
+
+
+
+------THAL-------
+
+```{r thal variables}
+# Create and modify variables here
+
+# Graph variables
+variable_being_graphed <- "Myocardial Perfusion Pattern" # Used to create titles
+x_label <- "Myocardial Perfusion Pattern"
+y_labels <- c("Number of People", "Proportion With Heart Disease") # Use first one for frequency graphs, second one for                                                                          proportion graphs
+```
+
+Myocardial perfusion imaging with thallium-201 (https://www.ncbi.nlm.nih.gov/pubmed/8151393) is a technique used to evaluate for heart disease. This data shows that most people have a fixed defect pattern and a reversible defect pattern.
+```{r g37 - thal frequency}
+# Frequency
+
+(g37 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = thal
+    )
+  ) + 
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) +
+  scale_x_discrete(
+    labels = c("Reversible Defect", "Fixed Defect", "Normal", "NA")
+  )
+)
+```
+```{r g37 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g37$labels$title, ".png", sep = ""), plot = g37)
+```
+
+People with fixed defect had the highest proportion of heart disease.
+```{r g38 - thal proportion}
+# Proportion of each with heart disease
+
+# Create a table showing the proportions
+heart_disease_by_thal <- heart_data %>% 
+                        group_by(thal) %>% 
+                        summarise(p_with_disease = sum(target == 1) / n())
+                        
+(g38 <- ggplot(data = heart_disease_by_thal) +
+  geom_col(
+    mapping = aes(
+      x = thal,
+      y = p_with_disease
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[2]
+  ) +
+  scale_x_discrete(
+    labels = c("Reversible Defect", "Fixed Defect", "Normal", "NA")
+  )
+)
+```
+```{r g38 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g38$labels$title, ".png", sep = ""), plot = g38)
+```
+
+```{r g39 - thal freq and prop}
+# Overlay of the last two graphs
+
+(g39 <- ggplot(data = heart_data) +
+  geom_bar(
+    mapping = aes(
+      x = thal,
+      fill = target
+      )
+  ) +
+  theme(
+    plot.title = element_text(hjust = CENTER),
+  ) +
+  labs(
+    title = paste(variable_being_graphed, " - Frequency and Proportion", sep = ""),
+    x = x_label,
+    y = y_labels[1]
+  ) + 
+  scale_fill_manual(
+    name = "Heart Disease",
+    labels = c("No", "Yes"),
+    values = c("salmon", "darkred")
+  ) +
+  scale_x_discrete(
+    labels = c("Reversible Defect", "Fixed Defect", "Normal", "NA")
+  )
+)
+```
+```{r g39 - save, include=FALSE}
+# Run this to save the graph in a .pdf or .png file
+ggsave(paste("../Plots/", g39$labels$title, ".png", sep = ""), plot = g39)
+```

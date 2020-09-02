@@ -1,0 +1,140 @@
+---
+title: "SVM Model"
+output: 
+---
+
+```{r include=FALSE}
+library(readr)
+library(dplyr)
+library(e1071)
+```
+
+```{r}
+heart_data <- read_csv("../Data/trainingHeart.csv")
+# Remove 0s
+heart_data <- filter(heart_data, thal != 0)
+heart_data$thal <- as.factor(heart_data$thal)
+heart_data$sex <- as.factor(heart_data$sex)
+heart_data$cp <- as.factor(heart_data$cp)
+heart_data$fbs <- as.factor(heart_data$fbs)
+heart_data$restecg <- as.factor(heart_data$restecg)
+heart_data$exang <- as.factor(heart_data$exang)
+heart_data$slope <- as.factor(heart_data$slope)
+heart_data$ca <- as.factor(heart_data$ca)
+heart_data$target <- as.factor(heart_data$target)
+
+predicting_set <- read_csv("../Data/heartPredictions.csv")
+predicting_set$thal <- as.factor(predicting_set$thal)
+predicting_set$sex <- as.factor(predicting_set$sex)
+predicting_set$cp <- as.factor(predicting_set$cp)
+predicting_set$fbs <- as.factor(predicting_set$fbs)
+predicting_set$restecg <- as.factor(predicting_set$restecg)
+predicting_set$exang <- as.factor(predicting_set$exang)
+predicting_set$slope <- as.factor(predicting_set$slope)
+predicting_set$ca <- as.factor(predicting_set$ca)
+predicting_set$target <- as.factor(predicting_set$target)
+```
+
+```{r}
+createSets <- function(data, trainingSetSize, trainingSetName = "trainingSet", testingSetName = "testingSet") {
+  nrows <- base::nrow(data)
+  trainingSetIndexes <- sample(1:nrows, nrows * trainingSetSize, replace = FALSE)
+  testingSetIndexes <- setdiff(1:nrows, trainingSetIndexes)
+  assign(trainingSetName, subset(data[trainingSetIndexes,]), pos = 1)
+  assign(testingSetName, subset(data[testingSetIndexes,]), pos = 1)
+}
+```
+
+```{r}
+# Normalize data
+for (i in c(1, 4, 5, 8, 10)) {
+   heart_data[, i] <- scale(heart_data[, i])
+}
+```
+
+```{r}
+createSets(heart_data, trainingSetSize = 0.85, trainingSetName = "heart_data", testingSetName = "predicting_set")
+createSets(heart_data, trainingSetSize = 0.8)
+```
+
+```{r}
+svmModel <- svm(target ~ ., data = trainingSet, kernel = "polynomial", cost = 50)
+```
+
+```{r}
+predictions <- predict(svmModel, testingSet)
+```
+
+```{r}
+missRate <- 1 - (mean(predictions == testingSet$target))
+missRate
+```
+
+```{r}
+isTrue <- sum(predictions == 1)
+isFalse <- sum(predictions == 0)
+isFalsePositive <- sum(predictions == 1 & predictions != testingSet$target)
+isFalsePositive
+# What proportion of positives were false positives
+isFalsePositive / isTrue
+isFalseNegative <- sum(predictions == 0 & predictions != testingSet$target)
+isFalseNegative
+isFalseNegative / isFalse
+```
+
+```{r}
+tuned_parameters = tune.svm(target ~ ., data = trainingSet, gamma = 5^(-1:2), cost = 5^(-1:3))
+summary(tuned_parameters)
+tuned_parameters
+```
+
+```{r}
+svmModel <- svm(target ~ ., data = trainingSet, gamma = tuned_parameters$best.parameters$gamma, cost = tuned_parameters$best.parameters$cost)
+```
+
+```{r}
+predictions <- predict(svmModel, testingSet)
+```
+
+```{r}
+missRate <- 1 - (mean(predictions == testingSet$target))
+missRate
+```
+
+```{r}
+isTrue <- sum(predictions == 1)
+isFalse <- sum(predictions == 0)
+isFalsePositive <- sum(predictions == 1 & predictions != testingSet$target)
+isFalsePositive
+# What proportion of positives were false positives
+isFalsePositive / isTrue
+isFalseNegative <- sum(predictions == 0 & predictions != testingSet$target)
+isFalseNegative
+isFalseNegative / isFalse
+```
+
+```{r}
+predictions <- predict(svmModel, predicting_set)
+missRate <- 1 - (mean(predictions == predicting_set$target))
+missRate
+
+isTrue <- sum(predictions == 1)
+isFalse <- sum(predictions == 0)
+isFalsePositive <- sum(predictions == 1 & predictions != predicting_set$target)
+isFalsePositive
+# What proportion of positives were false positives
+isFalsePositive / isTrue
+isFalseNegative <- sum(predictions == 0 & predictions != predicting_set$target)
+isFalseNegative
+isFalseNegative / isFalse
+```
+
+```{r}
+write.csv(heart_data, "../Data/trainingHeart.csv", row.names = FALSE)
+write.csv(predicting_set, "../Data/heartPredictions.csv", row.names = FALSE)
+```
+
+```{r}
+predicting_set_old <- predicting_set
+```
+

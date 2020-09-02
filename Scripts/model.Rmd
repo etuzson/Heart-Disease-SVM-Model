@@ -1,0 +1,104 @@
+---
+title: "Model"
+output: 
+---
+
+```{r include=FALSE}
+library(readr)
+library(dplyr)
+library(e1071)
+```
+
+```{r}
+heart_data <- read_csv("../Data/heart.csv", col_types = cols(
+                                                              sex = col_factor(),
+                                                              cp = col_factor(),
+                                                              fbs = col_factor(),
+                                                              restecg = col_factor(),
+                                                              exang = col_factor(),
+                                                              slope = col_factor(),
+                                                              ca = col_factor(),
+                                                              thal = col_factor(),
+                                                              target = col_factor()
+                                                            ))
+head(heart_data)
+```
+
+```{r}
+createSets <- function(data, trainingSetSize, trainingSetName = "trainingSet", testingSetName = "testingSet") {
+  nrows <- nrow(data)
+  trainingSetIndexes <- sample(1:nrows, nrows * trainingSetSize, replace = FALSE)
+  testingSetIndexes <- setdiff(1:nrows, trainingSetIndexes)
+  assign(trainingSetName, subset(data[trainingSetIndexes,]), pos = 1)
+  assign(testingSetName, subset(data[testingSetIndexes,]), pos = 1)
+}
+```
+
+```{r}
+# Normalize data
+for (i in c(1, 4, 5, 8, 10)) {
+    heart_data[, i] <- scale(heart_data[, i])
+  }
+```
+
+```{r}
+createSets(heart_data, trainingSetSize = 0.8)
+```
+
+```{r}
+svmModel <- svm(target ~ ., data = trainingSet, kernel = "radial", cost = 10)
+```
+
+```{r}
+predictions <- predict(svmModel, testingSet)
+```
+
+```{r}
+missRate <- 1 - (mean(predictions == testingSet$target))
+missRate
+```
+
+```{r}
+isTrue <- sum(predictions == 1)
+isFalse <- sum(predictions == 0)
+isFalsePositive <- sum(predictions == 1 & predictions != testingSet$target)
+isFalsePositive
+# What proportion of positives were false positives
+isFalsePositive / isTrue
+isFalseNegative <- sum(predictions == 0 & predictions != testingSet$target)
+isFalseNegative
+# What proportion of positives were false negatives
+isFalseNegative / isFalse
+```
+
+```{r include=FALSE}
+# Create data frame of different combinations
+svmResults <- data.frame(Kernel = character(0), Cost = numeric(0), Miss_Rate = numeric(0), False_Positives = numeric(0),
+                         False_Negatives = numeric(0))
+names(svmResults) <- c("Kernel", "Cost", "Miss Rate", "False Pos", "False Neg")
+
+# Try all the different combinations
+for (kernel in c("linear", "polynomial", "radial", "sigmoid")) {
+  message(kernel)
+  for (cost in 1:100) {
+    message(cost)
+    
+    createSets(heart_data, trainingSetSize = 0.8)
+    svmModel <- svm(target ~ ., data = trainingSet, kernel = kernel, cost = cost)
+    predictions <- predict(svmModel, testingSet)
+    missRate <- 1 - (mean(predictions == testingSet$target))
+    
+    isTrue <- sum(predictions == 1)
+    isFalse <- sum(predictions == 0)
+    isFalsePositive <- sum(predictions == 1 & predictions != testingSet$target)
+    falsePositiveProportion <- isFalsePositive / isTrue
+    isFalseNegative <- sum(predictions == 0 & predictions != testingSet$target)
+    falseNegativeProportion <- isFalseNegative / isFalse
+    
+    svmResults <- rbind(svmResults, data.frame(Kernel = kernel, Cost = cost, Miss_rate = missRate, 
+                                               False_Positives = falsePositiveProportion, 
+                                               False_Negatives = falseNegativeProportion))
+  }
+}
+```
+
